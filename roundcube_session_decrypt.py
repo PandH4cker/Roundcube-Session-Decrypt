@@ -54,7 +54,7 @@ def roundcube_session_decrypt(session, key):
     username, password_hex, iv_hex  = extract_creds(session)
     print(f"[+] {username}:{decrypt_user_session(password_hex, key, iv_hex)}")
 
-if __name__ == '__main__':
+def main():
     args = build_args().parse_args()
 
     if args.session:
@@ -63,3 +63,6 @@ if __name__ == '__main__':
         sessions = read_session_from_file(args.session_file)
         for session in sessions:
             roundcube_session_decrypt(session, args.des_key)
+
+if __name__ == '__main__':
+    main()
